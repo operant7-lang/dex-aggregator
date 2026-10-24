@@ -22,4 +22,16 @@ contract AggregatorTest is Test {
         console.log("Best DEX:", dex);
         assertGt(out, 0);
     }
+
+    function testSwap() public {
+        deal(WETH, address(this), 1 ether);
+        IERC20(WETH).approve(address(agg), 1 ether);
+
+        uint256 before = IERC20(USDC).balanceOf(address(this));
+        uint256 out = agg.swap(WETH, USDC, 1 ether, 0, block.timestamp + 300);
+
+        assertGt(out, 0);
+        assertEq(IERC20(USDC).balanceOf(address(this)) - before, out);
+        assertEq(IERC20(WETH).balanceOf(address(this)), 0);
+    }
 }
