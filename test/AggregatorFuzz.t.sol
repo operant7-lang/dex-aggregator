@@ -13,7 +13,7 @@ contract AggregatorFuzzTest is Test {
     Aggregator agg;
 
     function setUp() public {
-        agg = new Aggregator(UNI, SUSHI);
+        agg = new Aggregator(UNI, SUSHI, WETH);
     }
 
     function _path() internal pure returns (address[] memory p) {
@@ -27,7 +27,7 @@ contract AggregatorFuzzTest is Test {
         amountIn = bound(amountIn, 0.01 ether, 100 ether);
         uint256 u = IRouter(UNI).getAmountsOut(amountIn, _path())[1];
         uint256 s = IRouter(SUSHI).getAmountsOut(amountIn, _path())[1];
-        (uint256 best, ) = agg.getBestQuote(WETH, USDC, amountIn);
+        (uint256 best, , ) = agg.getBestQuote(WETH, USDC, amountIn);
         assertEq(best, u >= s ? u : s);
     }
 
@@ -37,7 +37,7 @@ contract AggregatorFuzzTest is Test {
         deal(WETH, address(this), amountIn);
         IERC20(WETH).approve(address(agg), amountIn);
 
-        (uint256 quoted, ) = agg.getBestQuote(WETH, USDC, amountIn);
+        (uint256 quoted, , ) = agg.getBestQuote(WETH, USDC, amountIn);
         uint256 out = agg.swap(WETH, USDC, amountIn, 0, block.timestamp + 300);
         assertEq(out, quoted);
     }

@@ -13,11 +13,11 @@ contract AggregatorTest is Test {
     Aggregator agg;
 
     function setUp() public {
-        agg = new Aggregator(UNI, SUSHI);
+        agg = new Aggregator(UNI, SUSHI, WETH);
     }
 
     function testBestQuote() public view {
-        (uint256 out, string memory dex) = agg.getBestQuote(WETH, USDC, 1 ether);
+        (uint256 out, string memory dex, ) = agg.getBestQuote(WETH, USDC, 1 ether);
         console.log("USDC out:", out);
         console.log("Best DEX:", dex);
         assertGt(out, 0);

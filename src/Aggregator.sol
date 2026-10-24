@@ -23,29 +23,71 @@ interface IRouter {
 contract Aggregator {
     IRouter public immutable uniswap;
     IRouter public immutable sushi;
+    address public immutable weth;
 
-    constructor(address _uniswap, address _sushi) {
-        uniswap = IRouter(_uniswap);
-        sushi = IRouter(_sushi);
+    struct Route {
+        IRouter router;
+        address[] path;
+        uint256 out;
+        uint8 dexId; // 0 = uniswap, 1 = sushiswap
     }
 
-    function _best(address[] memory path, uint256 amountIn)
-        internal view returns (uint256 bestOut, IRouter bestRouter, string memory bestDex)
-    {
-        uint256 u = uniswap.getAmountsOut(amountIn, path)[1];
-        uint256 s = sushi.getAmountsOut(amountIn, path)[1];
+    constructor(address _uniswap, address _sushi, address _weth) {
+        uniswap = IRouter(_uniswap);
+        sushi = IRouter(_sushi);
+        weth = _weth;
+    }
 
-        if (u >= s) return (u, uniswap, "uniswap");
-        return (s, sushi, "sushiswap");
+    // Returns 0 if the pool doesn't exist instead of reverting
+    function _quote(IRouter router, address[] memory path, uint256 amountIn)
+        internal view returns (uint256)
+    {
+        try router.getAmountsOut(amountIn, path) returns (uint256[] memory a) {
+            return a[a.length - 1];
+        } catch {
+            return 0;
+        }
+    }
+
+    function _consider(
+        Route memory best,
+        IRouter router,
+        uint8 id,
+        address[] memory path,
+        uint256 amountIn
+    ) internal view returns (Route memory) {
+        uint256 o = _quote(router, path, amountIn);
+        if (o > best.out) return Route(router, path, o, id);
+        return best;
+    }
+
+    function _best(address tokenIn, address tokenOut, uint256 amountIn)
+        internal view returns (Route memory best)
+    {
+        address[] memory direct = new address[](2);
+        direct[0] = tokenIn;
+        direct[1] = tokenOut;
+        best = _consider(best, uniswap, 0, direct, amountIn);
+        best = _consider(best, sushi, 1, direct, amountIn);
+
+        if (tokenIn != weth && tokenOut != weth) {
+            address[] memory via = new address[](3);
+            via[0] = tokenIn;
+            via[1] = weth;
+            via[2] = tokenOut;
+            best = _consider(best, uniswap, 0, via, amountIn);
+            best = _consider(best, sushi, 1, via, amountIn);
+        }
+        require(best.out > 0, "no route");
     }
 
     function getBestQuote(address tokenIn, address tokenOut, uint256 amountIn)
-        external view returns (uint256 bestOut, string memory bestDex)
+        external view returns (uint256 bestOut, string memory bestDex, uint256 hops)
     {
-        address[] memory path = new address[](2);
-        path[0] = tokenIn;
-        path[1] = tokenOut;
-        (bestOut, , bestDex) = _best(path, amountIn);
+        Route memory r = _best(tokenIn, tokenOut, amountIn);
+        string memory name = "sushiswap";
+        if (r.dexId == 0) name = "uniswap";
+        return (r.out, name, r.path.length - 1);
     }
 
     function swap(
@@ -55,18 +97,14 @@ contract Aggregator {
         uint256 minOut,
         uint256 deadline
     ) external returns (uint256 amountOut) {
-        address[] memory path = new address[](2);
-        path[0] = tokenIn;
-        path[1] = tokenOut;
-
-        (, IRouter router, ) = _best(path, amountIn);
+        Route memory r = _best(tokenIn, tokenOut, amountIn);
 
         require(IERC20(tokenIn).transferFrom(msg.sender, address(this), amountIn), "transferFrom failed");
-        require(IERC20(tokenIn).approve(address(router), amountIn), "approve failed");
+        require(IERC20(tokenIn).approve(address(r.router), amountIn), "approve failed");
 
-        uint256[] memory amounts = router.swapExactTokensForTokens(
-            amountIn, minOut, path, msg.sender, deadline
+        uint256[] memory amounts = r.router.swapExactTokensForTokens(
+            amountIn, minOut, r.path, msg.sender, deadline
         );
-        return amounts[1];
+        return amounts[amounts.length - 1];
     }
 }
