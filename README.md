@@ -1,66 +1,29 @@
-## Foundry
+# DEX Aggregator
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+A Solidity contract that quotes a token swap on Uniswap V2 and Sushiswap, then executes it on whichever pays more. Built with Foundry and tested against a fork of Ethereum mainnet.
 
-Foundry consists of:
+## What it does
 
-- **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
-- **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
-- **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
-- **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+- getBestQuote(tokenIn, tokenOut, amountIn) compares both DEXs and returns the better output and its name.
+- swap(tokenIn, tokenOut, amountIn, minOut, deadline) pulls the tokens, routes through the winning DEX, and sends the output to the caller.
+- minOut gives slippage protection and deadline stops stale swaps. Both revert when violated.
 
-## Documentation
+## Example result (mainnet fork)
 
-https://book.getfoundry.sh/
+    1 WETH -> 2,359.15 USDC via Uniswap (better than Sushiswap at that block)
 
-## Usage
+## Tests
 
-### Build
+- Unit tests: quote and full swap execution
+- Fuzz tests: for any amount, the quote equals the better DEX and the executed swap pays exactly the quote
+- Revert tests: impossible minOut and expired deadline
 
-```shell
-$ forge build
-```
+## Run it
 
-### Test
+    forge test --fork-url YOUR_MAINNET_RPC_URL -vv
 
-```shell
-$ forge test
-```
+## Limitations
 
-### Format
-
-```shell
-$ forge fmt
-```
-
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+- Only 2-token direct paths on Uniswap V2-style routers (no multi-hop, no Curve or V3 yet)
+- Tokens with non-standard ERC-20 behavior (e.g. USDT) are not handled
+- Not audited. Educational project, do not use with real funds.
