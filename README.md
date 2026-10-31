@@ -27,3 +27,7 @@ A Solidity contract that quotes a token swap on Uniswap V2 and Sushiswap, then e
 - Only 2-token direct paths on Uniswap V2-style routers (no multi-hop, no Curve or V3 yet)
 - Tokens with non-standard ERC-20 behavior (e.g. USDT) are not handled
 - Not audited. Educational project, do not use with real funds.
+
+## Deployment
+Sepolia (verified): https://sepolia.etherscan.io/address/0x81D3d5729Fc6F2A027E172B7cBfc4F09ab2847Ae
+
