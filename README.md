@@ -31,3 +31,7 @@ A Solidity contract that quotes a token swap on Uniswap V2 and Sushiswap, then e
 ## Deployment
 Sepolia (verified): https://sepolia.etherscan.io/address/0x81D3d5729Fc6F2A027E172B7cBfc4F09ab2847Ae
 
+
+## Uniswap V3 support
+
+AggregatorV3.sol adds Uniswap V3 (all four fee tiers) as a third source alongside Uniswap V2 and SushiSwap, plus routes via WETH. The V3 quoter is not a view function, so quotes are read with eth_call. Tests: test/AggregatorV3.t.sol (unit, fuzz and revert tests on a mainnet fork).
